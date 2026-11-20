@@ -1,11 +1,14 @@
 <idea-plugin>
     <id>cn.inovance.sqlfmt</id>
     <name>Oracle PL/SQL Formatter</name>
-    <version>1.0.6</version>
+    <version>1.0.7</version>
     <vendor>Inovance / CVD margin deduction</vendor>
     <idea-version since-build="231" until-build="263.*"/>
 
     <change-notes><![CDATA[
+      <b>1.0.7</b> — INSERT INTO ... SELECT 对齐：<br/>
+      • INSERT 行建立本层基准，SELECT/FROM/WHERE 与 INSERT 同列；内联子查询仍按各自 SELECT 列。<br/>
+      • 自测 43/43 → 44/44。<br/>
       <b>1.0.6</b> — 内联子查询识别通用化：<br/>
       • 行内出现 "(SELECT" 即按 SELECT 实际列对齐内层 FROM/WHERE，AND/GROUP/ORDER 按条件列。<br/>
       • 覆盖 IN (SELECT ...)、= (SELECT ...) 等此前未识别的前缀；自测 42/42 → 43/43。<br/>

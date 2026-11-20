@@ -21,6 +21,7 @@ import cn.inovance.sqlfmt.core.Token;
  *  - 以括号深度区分层级：只改与基准 SELECT 同深度的主子句；
  *    内联 "(SELECT ...)" 内层深度更深，不按外层列重排。
  *  - AND 不在此规则内，仍由 R17 按「WHERE + 2」对齐。
+ *  - INSERT INTO ... SELECT 由 INSERT 行建立本层基准，SELECT/FROM/WHERE 与 INSERT 同列；
  *  - 行首 SELECT 建立本层基准；行内出现 "(SELECT ..." 即以内联 SELECT 的实际列为
  *    内层基准（", (" / "FROM (" / "IN (" / 裸 "(" 等均适用），FROM/WHERE 与它同列；
  *    内联层内的 GROUP/ORDER/HAVING 按条件列（基准 + 2）对齐。
@@ -53,6 +54,8 @@ public final class SelectClauseAlignRule implements Rule {
         Map<Integer, Integer> baseAtDepth = new HashMap<>();
         // 由内联 "(SELECT ...)" 建立基准的深度：GROUP/ORDER 按条件列而非基准列对齐
         Set<Integer> inlineDepth = new HashSet<>();
+        // INSERT 行的列：紧随其后的 SELECT 以此为基准，而不是 SELECT 自身原缩进
+        Map<Integer, Integer> insertBaseAtDepth = new HashMap<>();
 
         for (SqlDocument.Line line : doc.lines()) {
             if (line.removed || line.guarded) continue;
@@ -63,9 +66,24 @@ public final class SelectClauseAlignRule implements Rule {
             // 新语句开始：清掉本层及更深层的旧基准
             if (first != null && STATEMENT_START.contains(first)) {
                 baseAtDepth.entrySet().removeIf(e -> e.getKey() >= d);
+                if (!"SELECT".equals(first)) {
+                    insertBaseAtDepth.entrySet().removeIf(e -> e.getKey() >= d);
+                }
             }
-            if ("SELECT".equals(first)) {
-                baseAtDepth.put(d, line.indentLen());
+            if ("INSERT".equals(first)) {
+                insertBaseAtDepth.put(d, line.indentLen());
+            } else if ("SELECT".equals(first)) {
+                Integer ib = insertBaseAtDepth.get(d);
+                if (ib != null) {
+                    if (line.indentLen() != ib) {
+                        line.setIndent(ib);
+                        changed++;
+                    }
+                    baseAtDepth.put(d, ib);
+                    insertBaseAtDepth.remove(d);
+                } else {
+                    baseAtDepth.put(d, line.indentLen());
+                }
             } else if (first != null && CLAUSE.contains(first)) {
                 Integer base = baseAtDepth.get(d);
                 if (base != null) {
@@ -84,6 +102,7 @@ public final class SelectClauseAlignRule implements Rule {
             // 语句结束：分号或 PL/SQL 块关键字
             if ((first != null && BLOCK.contains(first)) || containsPunct(codes, ";")) {
                 baseAtDepth.entrySet().removeIf(e -> e.getKey() >= d);
+                insertBaseAtDepth.entrySet().removeIf(e -> e.getKey() >= d);
             }
 
             // R19：扫完整行累计括号深度；深度回落时清掉更深层基准
@@ -94,6 +113,7 @@ public final class SelectClauseAlignRule implements Rule {
             final int curDepth = depth;
             baseAtDepth.entrySet().removeIf(e -> e.getKey() > curDepth);
             inlineDepth.removeIf(e -> e > curDepth);
+            insertBaseAtDepth.entrySet().removeIf(e -> e.getKey() > curDepth);
 
             // 内联 ", (SELECT ...)" / "FROM (SELECT ...)" 的 '(' 打开新一层：
             // 内层 FROM/WHERE 以内联 SELECT 的实际列为基准，与「SELECT 同列」一致。

@@ -167,6 +167,23 @@ public final class FormatterSelfTest {
                         + "                  ORDER BY t.id) LOOP"),
                 String.valueOf(r25in.error) + " :: " + r25in.text);
 
+        // 5.6.4 INSERT INTO ... SELECT 以 INSERT 行为基准
+        String sInsert = "    INSERT INTO tab (a, b)\n"
+                + "      SELECT x.a, x.b\n"
+                + "        FROM (SELECT a, b\n"
+                + "                FROM src s\n"
+                + "               WHERE s.id = 1) x\n"
+                + "       WHERE x.a > 0;\n";
+        SqlFormatter.Result rInsert = SqlFormatter.format(sInsert, r25);
+        check("R25 INSERT-SELECT 主子句与 INSERT 同列",
+                rInsert.ok && rInsert.text.equals("    INSERT INTO tab (a, b)\n"
+                        + "    SELECT x.a, x.b\n"
+                        + "    FROM (SELECT a, b\n"
+                        + "          FROM src s\n"
+                        + "          WHERE s.id = 1) x\n"
+                        + "    WHERE x.a > 0;\n"),
+                String.valueOf(rInsert.error) + " :: " + rInsert.text);
+
         // 5.7 R22/R23：CASE 为基准，WHEN/THEN/ELSE +2，END 同列
         FormatOptions caseOnly = off();
         caseOnly.blockStructure = true;
