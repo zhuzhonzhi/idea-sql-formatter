@@ -1,6 +1,6 @@
 # Oracle PL/SQL Formatter（IntelliJ IDEA 插件）
 
-依据 `/Users/zzz/Develop/汇川/PLSQL_格式化规则.md`（R1–R25、G1–G6、E1–E8、V1–V6）
+依据 `PLSQL_格式化规则.md`（R1–R25、G1–G6、E1–E8、V1–V6）
 实现的 IDEA 格式化插件，面向 Oracle SQL / PL-SQL 文件（`.sql / .pck / .pks / .pls / .trg ...`）。
 
 **验证状态**：已用本机 IntelliJ IDEA Ultimate 2026.1（build 261）自带的 379 个 platform jar
@@ -23,7 +23,7 @@
 已生成可直接安装的插件包：
 
 ```
-/Users/zzz/Develop/idea-sql-formatter/build/Oracle-PLSQL-Formatter-1.0.2.jar
+idea-sql-formatter/build/Oracle-PLSQL-Formatter-1.0.2.jar
 ```
 
 在 IDEA 中：**Settings → Plugins → ⚙ → Install Plugin from Disk...** 选择该 jar，重启 IDE。
@@ -32,7 +32,7 @@
 ### 方式 B：从源码构建
 
 ```bash
-cd /Users/zzz/Develop/idea-sql-formatter
+cd idea-sql-formatter
 ./gradlew buildPlugin        # 产物在 build/distributions/*.zip
 ```
 
@@ -77,7 +77,7 @@ cd /Users/zzz/Develop/idea-sql-formatter
 内核是零依赖纯 Java，已编译到 `out/`：
 
 ```bash
-cd /Users/zzz/Develop/idea-sql-formatter
+cd idea-sql-formatter
 java -cp out cn.inovance.sqlfmt.core.Cli FILE.pck --check   # 只校验
 java -cp out cn.inovance.sqlfmt.core.Cli FILE.pck            # 原地格式化（自动备份 .bak）
 java -cp out cn.inovance.sqlfmt.core.Cli FILE.pck -o OUT.pck
@@ -191,7 +191,7 @@ src/main/java/cn/inovance/sqlfmt/
 ## 6. 本地编译与自测
 
 ```bash
-ROOT=/Users/zzz/Develop/idea-sql-formatter
+ROOT=idea-sql-formatter
 OUT=$ROOT/out
 mkdir -p "$OUT"
 
@@ -243,7 +243,7 @@ java -cp "$OUT" cn.inovance.sqlfmt.DiagnoseIdempotency   # 单遍幂等诊断
 
 | 文件 | 说明 |
 |---|---|
-| `/Users/zzz/Develop/汇川/PLSQL_格式化规则.md` | 规则权威来源（本插件的依据） |
+| `PLSQL_格式化规则.md` | 规则权威来源（本插件的依据） |
 | `/Users/zzz/Develop/汇川/plsql_formatter.py` | 早期 Python 通用工具（仅基础三件套） |
 | `/Users/zzz/Develop/汇川/cux_bi_cst_mar.pck` | 已按规则排版的成品（本插件未改动） |
 | `build/Oracle-PLSQL-Formatter-1.0.2.jar` | 可直接安装的插件包（v1.0.2，新增 R25） |
