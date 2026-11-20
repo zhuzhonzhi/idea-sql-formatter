@@ -244,7 +244,7 @@ java -cp "$OUT" cn.inovance.sqlfmt.DiagnoseIdempotency   # 单遍幂等诊断
 | 文件 | 说明 |
 |---|---|
 | `PLSQL_格式化规则.md` | 规则权威来源（本插件的依据） |
-| `/Users/zzz/Develop/汇川/plsql_formatter.py` | 早期 Python 通用工具（仅基础三件套） |
-| `/Users/zzz/Develop/汇川/cux_bi_cst_mar.pck` | 已按规则排版的成品（本插件未改动） |
+| `plsql_formatter.py` | 早期 Python 通用工具（仅基础三件套） |
+| `cux_bi_cst_mar.pck` | 已按规则排版的成品（本插件未改动） |
 | `build/Oracle-PLSQL-Formatter-1.0.2.jar` | 可直接安装的插件包（v1.0.2，新增 R25） |
-| `/Users/zzz/Develop/汇川/cux_cst_margin_deduction_prt.formatted.pck` | 按修复后工具生成的格式化副本；原只读文件未改动 |
+| `cux_cst_margin_deduction_prt.formatted.pck` | 按修复后工具生成的格式化副本；原只读文件未改动 |
