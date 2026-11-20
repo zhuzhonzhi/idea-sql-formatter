@@ -1,11 +1,21 @@
 <idea-plugin>
     <id>cn.inovance.sqlfmt</id>
     <name>Oracle PL/SQL Formatter</name>
-    <version>1.0.3</version>
+    <version>1.0.6</version>
     <vendor>Inovance / CVD margin deduction</vendor>
     <idea-version since-build="231" until-build="263.*"/>
 
     <change-notes><![CDATA[
+      <b>1.0.6</b> — 内联子查询识别通用化：<br/>
+      • 行内出现 "(SELECT" 即按 SELECT 实际列对齐内层 FROM/WHERE，AND/GROUP/ORDER 按条件列。<br/>
+      • 覆盖 IN (SELECT ...)、= (SELECT ...) 等此前未识别的前缀；自测 42/42 → 43/43。<br/>
+      <b>1.0.5</b> — 行首裸 "(SELECT ..." 嵌套子查询对齐：<br/>
+      • 与 ", (SELECT"、"FROM (SELECT" 同样按 SELECT 实际列对齐 FROM/WHERE，AND 保持 WHERE + 2。<br/>
+      • 嵌套层按括号深度各自取基准，自测 41/41 → 42/42。<br/>
+      <b>1.0.4</b> — 内联 FROM (SELECT ...) 子查询对齐：<br/>
+      • FROM/WHERE 以内联 SELECT 所在列为基准对齐；AND 保持 WHERE + 2。<br/>
+      • 内联层内的 GROUP/ORDER/HAVING 按条件列（SELECT 列 + 2）对齐。<br/>
+      • 自测 40/40 → 41/41。<br/>
       <b>1.0.3</b> — 修复 R10 / R25 / R22-R23 四类排版问题：<br/>
       • R10：行尾逗号后紧跟行尾注释时，逗号移到下一非注释行行首，注释留在原行。<br/>
       • R25：", (SELECT ...)" 标量子查询内 FROM/WHERE 与 SELECT 同列，AND 仍为 WHERE + 2。<br/>

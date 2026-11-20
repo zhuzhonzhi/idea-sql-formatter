@@ -1,6 +1,7 @@
 package cn.inovance.sqlfmt.core.rules;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -18,11 +19,11 @@ import cn.inovance.sqlfmt.core.Token;
  *
  * 边界（避免误伤）：
  *  - 以括号深度区分层级：只改与基准 SELECT 同深度的主子句；
- *    "FROM (SELECT ...)" 内层子查询的 FROM/WHERE 深度更深，不按外层列重排。
+ *    内联 "(SELECT ...)" 内层深度更深，不按外层列重排。
  *  - AND 不在此规则内，仍由 R17 按「WHERE + 2」对齐。
- *  - 行首 SELECT 建立本层基准；行内 ", (SELECT ...)" 标量子查询以其中 SELECT
- *    的实际列为内层基准，使括号内 FROM/WHERE 与 SELECT 同列；
- *    "FROM (SELECT" 仍不建立，避免把列号算到括号中间。
+ *  - 行首 SELECT 建立本层基准；行内出现 "(SELECT ..." 即以内联 SELECT 的实际列为
+ *    内层基准（", (" / "FROM (" / "IN (" / 裸 "(" 等均适用），FROM/WHERE 与它同列；
+ *    内联层内的 GROUP/ORDER/HAVING 按条件列（基准 + 2）对齐。
  *  - 只改行首空白（G1），字符串 / 注释 / guarded 行跳过，V1-V4 天然守恒。
  */
 public final class SelectClauseAlignRule implements Rule {
@@ -48,8 +49,10 @@ public final class SelectClauseAlignRule implements Rule {
         if (!options.selectClauseAlign) return 0;
         int changed = 0;
         int depth = 0;
-        // depth -> 该层最近一个行首 SELECT 的列
+        // depth -> 该层最近一个 SELECT 的列（行首 SELECT 或内联括号里的 SELECT）
         Map<Integer, Integer> baseAtDepth = new HashMap<>();
+        // 由内联 "(SELECT ...)" 建立基准的深度：GROUP/ORDER 按条件列而非基准列对齐
+        Set<Integer> inlineDepth = new HashSet<>();
 
         for (SqlDocument.Line line : doc.lines()) {
             if (line.removed || line.guarded) continue;
@@ -65,9 +68,16 @@ public final class SelectClauseAlignRule implements Rule {
                 baseAtDepth.put(d, line.indentLen());
             } else if (first != null && CLAUSE.contains(first)) {
                 Integer base = baseAtDepth.get(d);
-                if (base != null && line.indentLen() != base) {
-                    line.setIndent(base);
-                    changed++;
+                if (base != null) {
+                    int target = base;
+                    if (inlineDepth.contains(d)
+                            && ("GROUP".equals(first) || "ORDER".equals(first) || "HAVING".equals(first))) {
+                        target = base + options.indentSize;   // 与 WHERE 后第一个条件同列
+                    }
+                    if (line.indentLen() != target) {
+                        line.setIndent(target);
+                        changed++;
+                    }
                 }
             }
 
@@ -83,23 +93,31 @@ public final class SelectClauseAlignRule implements Rule {
             }
             final int curDepth = depth;
             baseAtDepth.entrySet().removeIf(e -> e.getKey() > curDepth);
+            inlineDepth.removeIf(e -> e > curDepth);
 
-            // 行内 ", (SELECT ...)" 的 '(' 打开新一层：内层主子句以内联 SELECT
-            // 的实际列为基准，与外层「SELECT/FROM/WHERE 同列」的约定一致。
+            // 内联 ", (SELECT ...)" / "FROM (SELECT ...)" 的 '(' 打开新一层：
+            // 内层 FROM/WHERE 以内联 SELECT 的实际列为基准，与「SELECT 同列」一致。
             if (curDepth > d) {
-                int sel = scalarSubquerySelectCol(line, codes);
-                if (sel >= 0) baseAtDepth.put(curDepth, sel);
+                int sel = inlineSelectCol(line, codes);
+                if (sel >= 0) {
+                    baseAtDepth.put(curDepth, sel);
+                    inlineDepth.add(curDepth);
+                }
             }
         }
         return changed;
     }
 
-    /** @return ", (SELECT" 中 SELECT token 的列；非标量子查询返回 -1。 */
-    private static int scalarSubquerySelectCol(SqlDocument.Line line, List<Token> codes) {
-        if (codes.size() < 3) return -1;
-        if (!codes.get(0).isPunct(",") || !codes.get(1).isPunct("(")
-                || !codes.get(2).isWord("SELECT")) return -1;
-        Token select = codes.get(2);
+    /** @return 行内 "(SELECT" 中 SELECT token 的列；非内联子查询返回 -1。 */
+    private static int inlineSelectCol(SqlDocument.Line line, List<Token> codes) {
+        Token select = null;
+        for (int k = 0; k + 1 < codes.size(); k++) {
+            if (codes.get(k).isPunct("(") && codes.get(k + 1).isWord("SELECT")) {
+                select = codes.get(k + 1);                  // ", (" / "FROM (" / "IN (" / 裸 "("
+                break;
+            }
+        }
+        if (select == null) return -1;
         int col = line.indentLen();
         for (Token t : line.tokens) {
             if (t == select) return col;

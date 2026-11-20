@@ -93,9 +93,10 @@ public final class FormatterSelfTest {
                 + "             WHERE b = 1) x\n"
                 + "     WHERE a = 2;\n";
         SqlFormatter.Result r25n = SqlFormatter.format(s25n, r25);
-        check("R25 嵌套子查询不被外层基准改动",
-                r25n.ok && r25n.text.contains("              FROM t2")
-                        && r25n.text.contains("             WHERE b = 1"),
+        check("R25 内联 FROM (SELECT) 内层 FROM/WHERE 与 SELECT 同列",
+                r25n.ok && r25n.text.contains("    FROM (SELECT b\n"
+                        + "          FROM t2\n"
+                        + "          WHERE b = 1) x"),
                 String.valueOf(r25n.error) + " :: " + r25n.text);
 
         // 5.6 R25：", (SELECT ...)" 标量子查询内部 FROM/WHERE 与 SELECT 同列
@@ -115,6 +116,56 @@ public final class FormatterSelfTest {
                 String.valueOf(r25sub.error) + " :: " + r25sub.text);
         check("R25 子查询对齐不影响外层主子句",
                 r25sub.text.contains("\n    FROM t\n    WHERE a.id = 1;"), r25sub.text);
+
+        // 5.6.1 FROM (SELECT ...) 内联子查询：FROM/WHERE 同 SELECT 列，AND/GROUP BY 同条件列
+        String s25grp = "      SELECT x\n"
+                + "        FROM (SELECT t.a, t.b\n"
+                + "                  FROM tab t\n"
+                + "                 WHERE t.id = 1\n"
+                + "                   AND t.ok = 'Y'\n"
+                + "                 GROUP BY t.a, t.b) a;\n";
+        SqlFormatter.Result r25grp = SqlFormatter.format(s25grp, r25);
+        check("R25 FROM(SELECT) 内 FROM/WHERE 与 AND/GROUP BY 分层对齐",
+                r25grp.ok && r25grp.text.contains("      FROM (SELECT t.a, t.b\n"
+                        + "            FROM tab t\n"
+                        + "            WHERE t.id = 1\n"
+                        + "              AND t.ok = 'Y'\n"
+                        + "              GROUP BY t.a, t.b) a;"),
+                String.valueOf(r25grp.error) + " :: " + r25grp.text);
+
+        // 5.6.2 行首裸 "(SELECT ..." 内层同样按 SELECT 列对齐（嵌套层各自取基准）
+        String s25bare = "    SELECT x\n"
+                + "      FROM tab a\n"
+                + "     WHERE a.id = 1\n"
+                + "       AND EXISTS\n"
+                + "      (SELECT 1\n"
+                + "               FROM sub s\n"
+                + "              WHERE s.id = a.id\n"
+                + "                AND s.ok = 'Y');\n";
+        SqlFormatter.Result r25bare = SqlFormatter.format(s25bare, r25);
+        check("R25 裸 (SELECT) 内 FROM/WHERE 与 SELECT 同列",
+                r25bare.ok && r25bare.text.contains("      (SELECT 1\n"
+                        + "       FROM sub s\n"
+                        + "       WHERE s.id = a.id\n"
+                        + "         AND s.ok = 'Y');"),
+                String.valueOf(r25bare.error) + " :: " + r25bare.text);
+
+        // 5.6.3 IN (SELECT ...) 同样按内联 SELECT 列对齐
+        String s25in = "    FOR rec IN (SELECT t.id\n"
+                + "                       FROM tab t\n"
+                + "                      WHERE 1 = 1\n"
+                + "                        AND t.ok = 'Y'\n"
+                + "                      GROUP BY t.id\n"
+                + "                      ORDER BY t.id) LOOP\n";
+        SqlFormatter.Result r25in = SqlFormatter.format(s25in, r25);
+        check("R25 IN(SELECT) 内 FROM/WHERE 与 AND/GROUP/ORDER 分层对齐",
+                r25in.ok && r25in.text.contains("    FOR rec IN (SELECT t.id\n"
+                        + "                FROM tab t\n"
+                        + "                WHERE 1 = 1\n"
+                        + "                  AND t.ok = 'Y'\n"
+                        + "                  GROUP BY t.id\n"
+                        + "                  ORDER BY t.id) LOOP"),
+                String.valueOf(r25in.error) + " :: " + r25in.text);
 
         // 5.7 R22/R23：CASE 为基准，WHEN/THEN/ELSE +2，END 同列
         FormatOptions caseOnly = off();
