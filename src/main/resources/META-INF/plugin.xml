@@ -1,0 +1,63 @@
+<idea-plugin>
+    <id>cn.inovance.sqlfmt</id>
+    <name>Oracle PL/SQL Formatter</name>
+    <version>1.0.3</version>
+    <vendor>Inovance / CVD margin deduction</vendor>
+    <idea-version since-build="231" until-build="263.*"/>
+
+    <change-notes><![CDATA[
+      <b>1.0.3</b> — 修复 R10 / R25 / R22-R23 四类排版问题：<br/>
+      • R10：行尾逗号后紧跟行尾注释时，逗号移到下一非注释行行首，注释留在原行。<br/>
+      • R25：", (SELECT ...)" 标量子查询内 FROM/WHERE 与 SELECT 同列，AND 仍为 WHERE + 2。<br/>
+      • R22/R23：SQL CASE 按 CASE 列对齐，WHEN/THEN/ELSE +2、END 同列，嵌套 CASE 各用自身基准。<br/>
+      • 自测 33/33 → 40/40。<br/>
+      <b>1.0.2</b> — 新增规则 R25：<br/>
+      • SELECT ... INTO ... FROM ... WHERE 主子句以 SELECT 所在列为基准对齐（默认开，设置页可关）。<br/>
+      • 按括号深度区分层级，内联子查询不误伤；AND 仍按 R17 = WHERE + 2。<br/>
+      • 新增 3 项回归测试（自测 33/33）。<br/>
+      <b>1.0.1</b> — 修复 CRLF（Windows 换行）文件格式化报错：<br/>
+      • 词法层把 CRLF/CR 归一化为换行，\r 不再混入注释与字符串字面量；输出按原文件换行风格还原。<br/>
+      • 修正前导逗号规则把 "'N'," 这类含字符串字面量的字段行误判为占位行而整行删除。<br/>
+      • 新增 9 项 CRLF / protected-token 回归测试（自测 30/30）。<br/>
+      <b>1.0.0</b> — 首个版本（R1–R24、V1–V6）。
+    ]]></change-notes>
+
+    <description><![CDATA[
+      Formats Oracle SQL / PL-SQL files (.sql, .pck, .pks, .pls, .trg, ...) according to
+      the CUX formatting rulebook: keyword upper-case (R1), leading commas (R10),
+      block indentation with 2 spaces per level (R3/R24), WHERE/AND alignment (R17/R18),
+      SELECT clause baseline alignment (R25), blank-line cleanup (R20),
+      optional list / CASE column alignment (R9-R16, R22/R23),
+      and a token / literal / comma / structure safety gate (V1-V6) that refuses to write
+      back any result that is not semantically equivalent or not idempotent.
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <applicationService serviceImplementation="cn.inovance.sqlfmt.idea.SqlFormatSettings"/>
+        <applicationConfigurable parentId="tools"
+                                 instance="cn.inovance.sqlfmt.idea.SqlFormatConfigurable"
+                                 id="cn.inovance.sqlfmt.settings"
+                                 displayName="Oracle PL/SQL Formatter"/>
+        <notificationGroup id="Oracle SQL Formatter" displayType="BALLOON"/>
+    </extensions>
+
+    <actions>
+        <action id="cn.inovance.sqlfmt.Format"
+                class="cn.inovance.sqlfmt.idea.FormatSqlAction"
+                text="Format Oracle SQL"
+                description="Format the current SQL/PL-SQL file using the CUX rulebook">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+            <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt shift F"/>
+        </action>
+        <action id="cn.inovance.sqlfmt.Check"
+                class="cn.inovance.sqlfmt.idea.CheckSqlAction"
+                text="Check Oracle SQL Formatting"
+                description="Validate formatting rules without modifying the file">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+        </action>
+    </actions>
+</idea-plugin>
